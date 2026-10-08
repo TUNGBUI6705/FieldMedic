@@ -26,19 +26,19 @@ class AppDatabaseCreationTest {
     }
 
     @Test
-    fun testDatabaseCreation_containsAll7Tables() {
+    fun testDatabaseCreation_containsAll31TablesAnd1View() {
         // Force DB creation
         val db = database.openHelper.writableDatabase
 
-        val cursor = db.query(
+        val tableCursor = db.query(
             "SELECT name FROM sqlite_master WHERE type='table' AND name NOT IN ('android_metadata', 'room_master_table', 'sqlite_sequence')"
         )
 
         val tableNames = mutableSetOf<String>()
-        while (cursor.moveToNext()) {
-            tableNames.add(cursor.getString(0))
+        while (tableCursor.moveToNext()) {
+            tableNames.add(tableCursor.getString(0))
         }
-        cursor.close()
+        tableCursor.close()
 
         val expectedTables = setOf(
             "station",
@@ -47,9 +47,47 @@ class AppDatabaseCreationTest {
             "drug_catalog",
             "threshold_set",
             "threshold_rule",
-            "staff"
+            "staff",
+            "patient",
+            "patient_allergy",
+            "patient_condition",
+            "patient_medication",
+            "appointment",
+            "encounter",
+            "vital_sign",
+            "medication_given",
+            "referral",
+            "encounter_addendum",
+            "photo",
+            "sync_queue",
+            "sync_conflict",
+            "sync_cursor",
+            "record_comment",
+            "record_comment_revision",
+            "record_member",
+            "record_invite",
+            "record_lock",
+            "record_lock_state",
+            "comment_read_state",
+            "audit_log",
+            "paired_device",
+            "error_log",
         )
 
         assertEquals(expectedTables, tableNames)
+
+        val viewCursor = db.query(
+            "SELECT name FROM sqlite_master WHERE type='view'"
+        )
+
+        val viewNames = mutableSetOf<String>()
+        while (viewCursor.moveToNext()) {
+            viewNames.add(viewCursor.getString(0))
+        }
+        viewCursor.close()
+
+        val expectedViews = setOf("v_sync_summary")
+
+        assertEquals(expectedViews, viewNames)
     }
 }
