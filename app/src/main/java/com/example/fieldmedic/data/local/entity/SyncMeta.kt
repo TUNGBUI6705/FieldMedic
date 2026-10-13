@@ -1,7 +1,9 @@
 package com.example.fieldmedic.data.local.entity
 
 import androidx.room.ColumnInfo
+import kotlinx.serialization.Serializable
 
+@Serializable
 data class SyncMeta(
     @ColumnInfo(name = "version") val version: Int = 0,
     @ColumnInfo(name = "created_at") val createdAt: Long,

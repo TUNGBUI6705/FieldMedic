@@ -49,3 +49,17 @@ Quy ước dữ liệu:
 - Không thêm thư viện hoặc đổi cấu trúc ngoài phạm vi prompt. Không tự bịa phiên bản thư viện: chọn bản stable mới nhất tương thích với Kotlin/AGP của project và nêu rõ bản đã chọn.
 - Nếu spec thiếu hoặc mâu thuẫn: DỪNG và hỏi, không tự đoán.
 - Cuối mỗi tác vụ: project phải build được; liệt kê file đã tạo/sửa; nêu cách chạy test.
+
+
+## Quy tắc bổ sung (bắt buộc)
+- KHÔNG đặt try/catch, runCatching hoặc wrapper lỗi BÊN TRONG withTransaction.
+  Bọc lỗi ở NGOÀI transaction, để lỗi làm transaction rollback.
+- KHÔNG gắn @Serializable lên entity Room. Payload đồng bộ dùng lớp DTO riêng + hàm ánh xạ.
+- Cột dẫn xuất hoặc chỉ cục bộ (last_encounter_at, alert_level, has_danger_sign,
+  sync_status, server_updated_at, version, ...) KHÔNG được vào payload/base_values.
+- Mỗi cột mới của entity đồng bộ phải được xếp vào SYNCED hoặc LOCAL_ONLY (test sẽ kiểm tra).
+- error_log chỉ lưu mã lỗi + tên lớp exception, không lưu nội dung thông báo.
+- Mọi assert test phải cụ thể (kiểu exception, giá trị). Không bao giờ sửa test để làm xanh.
+- Khi test đỏ: nêu nguyên nhân gốc kèm bằng chứng trước, rồi mới sửa.
+- CREATE trong sync_queue luôn có base_version = 0.
+- Đọc cấu hình minSdk/package từ build.gradle.kts, không hard-code trong code.
