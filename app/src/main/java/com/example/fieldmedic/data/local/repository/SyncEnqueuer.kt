@@ -20,6 +20,13 @@ class SyncEnqueuer(private val dbProvider: () -> AppDatabase) {
         const val PHOTO = 3
     }
 
+    private fun mergeBaseValues(oldBaseJson: String, newBaseJson: String): String {
+        val oldObj = try { Json.parseToJsonElement(oldBaseJson).jsonObject } catch (_: Exception) { JsonObject(emptyMap()) }
+        val newObj = try { Json.parseToJsonElement(newBaseJson).jsonObject } catch (_: Exception) { JsonObject(emptyMap()) }
+        val merged = JsonObject(newObj + oldObj)
+        return Json.encodeToString(JsonObject.serializer(), merged)
+    }
+
     suspend fun enqueue(
         entityType: SyncEntityType,
         entityId: String,
@@ -32,12 +39,13 @@ class SyncEnqueuer(private val dbProvider: () -> AppDatabase) {
         dependsOn: String?,
         now: Long = System.currentTimeMillis()
     ) {
+        require(operation != QueueOperation.CREATE || baseVersion == 0) { "CREATE must have baseVersion 0" }
         val db = dbProvider()
         db.withTransaction {
             val dao = db.syncDao()
-            val existing = dao.findPending(entityType, entityId)
+            val existing = dao.findByStatus(entityType, entityId, QueueStatus.PENDING)
 
-            if (existing != null && existing.status == QueueStatus.PENDING) {
+            if (existing != null) {
                 when {
                     existing.operation == QueueOperation.CREATE && operation == QueueOperation.UPDATE -> {
                         val existingObj = Json.parseToJsonElement(existing.payload).jsonObject
@@ -45,8 +53,11 @@ class SyncEnqueuer(private val dbProvider: () -> AppDatabase) {
                         val merged = JsonObject(existingObj + newObj)
                         val mergedPayload = Json.encodeToString(JsonObject.serializer(), merged)
 
+                        val mergedBase = mergeBaseValues(existing.baseValues, baseValuesJson)
+
                         val updated = existing.copy(
                             payload = mergedPayload,
+                            baseValues = mergedBase,
                             priority = minOf(existing.priority, priority),
                             dependsOn = dependsOn ?: existing.dependsOn
                         )
@@ -56,46 +67,51 @@ class SyncEnqueuer(private val dbProvider: () -> AppDatabase) {
                         dao.delete(existing.id)
                     }
                     existing.operation == QueueOperation.UPDATE && operation == QueueOperation.DELETE -> {
+                        val mergedBase = mergeBaseValues(existing.baseValues, baseValuesJson)
+
                         val updated = existing.copy(
                             operation = QueueOperation.DELETE,
                             payload = changedFieldsJson,
+                            baseValues = mergedBase,
+                            priority = minOf(existing.priority, priority),
+                            dependsOn = dependsOn ?: existing.dependsOn
+                        )
+                        dao.upsert(updated)
+                    }
+                    existing.operation == QueueOperation.UPDATE && operation == QueueOperation.UPDATE -> {
+                        val existingObj = Json.parseToJsonElement(existing.payload).jsonObject
+                        val newObj = Json.parseToJsonElement(changedFieldsJson).jsonObject
+                        val merged = JsonObject(existingObj + newObj)
+                        val mergedPayload = Json.encodeToString(JsonObject.serializer(), merged)
+
+                        val mergedBase = mergeBaseValues(existing.baseValues, baseValuesJson)
+
+                        val updated = existing.copy(
+                            payload = mergedPayload,
+                            baseValues = mergedBase,
                             priority = minOf(existing.priority, priority),
                             dependsOn = dependsOn ?: existing.dependsOn
                         )
                         dao.upsert(updated)
                     }
                     else -> {
-                        if (existing.operation == QueueOperation.UPDATE && operation == QueueOperation.UPDATE) {
-                            val existingObj = Json.parseToJsonElement(existing.payload).jsonObject
-                            val newObj = Json.parseToJsonElement(changedFieldsJson).jsonObject
-                            val merged = JsonObject(existingObj + newObj)
-                            val mergedPayload = Json.encodeToString(JsonObject.serializer(), merged)
-
-                            val updated = existing.copy(
-                                payload = mergedPayload,
-                                priority = minOf(existing.priority, priority),
-                                dependsOn = dependsOn ?: existing.dependsOn
-                            )
-                            dao.upsert(updated)
-                        } else {
-                            val newItem = SyncQueue(
-                                id = UUID.randomUUID().toString(),
-                                entityType = entityType,
-                                entityId = entityId,
-                                patientId = patientId,
-                                operation = operation,
-                                payload = changedFieldsJson,
-                                baseValues = baseValuesJson,
-                                baseVersion = baseVersion,
-                                status = QueueStatus.PENDING,
-                                priority = priority,
-                                dependsOn = dependsOn,
-                                idempotencyKey = UUID.randomUUID().toString(),
-                                createdAt = now,
-                                nextAttemptAt = now
-                            )
-                            dao.upsert(newItem)
-                        }
+                        val newItem = SyncQueue(
+                            id = UUID.randomUUID().toString(),
+                            entityType = entityType,
+                            entityId = entityId,
+                            patientId = patientId,
+                            operation = operation,
+                            payload = changedFieldsJson,
+                            baseValues = baseValuesJson,
+                            baseVersion = baseVersion,
+                            status = QueueStatus.PENDING,
+                            priority = priority,
+                            dependsOn = dependsOn,
+                            idempotencyKey = UUID.randomUUID().toString(),
+                            createdAt = now,
+                            nextAttemptAt = now
+                        )
+                        dao.upsert(newItem)
                     }
                 }
             } else {

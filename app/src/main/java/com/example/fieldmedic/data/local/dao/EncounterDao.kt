@@ -16,6 +16,9 @@ interface EncounterDao {
     @Query("SELECT * FROM encounter WHERE id = :id AND is_deleted = 0")
     fun observe(id: String): Flow<Encounter?>
 
+    @Query("SELECT * FROM encounter WHERE id = :id")
+    suspend fun getById(id: String): Encounter?
+
     @Query("SELECT * FROM encounter WHERE patient_id = :patientId AND is_deleted = 0 ORDER BY visit_at DESC")
     fun observeHistory(patientId: String): Flow<List<Encounter>>
 

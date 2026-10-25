@@ -3,6 +3,7 @@ package com.example.fieldmedic.data.local.dao
 import androidx.room.Dao
 import androidx.room.Query
 import androidx.room.Upsert
+import com.example.fieldmedic.data.local.entity.QueueStatus
 import com.example.fieldmedic.data.local.entity.SyncEntityType
 import com.example.fieldmedic.data.local.entity.SyncErrorCategory
 import com.example.fieldmedic.data.local.entity.SyncQueue
@@ -49,6 +50,12 @@ interface SyncDao {
 
     @Query("SELECT * FROM sync_queue WHERE entity_type = :entityType AND entity_id = :entityId LIMIT 1")
     suspend fun findPending(entityType: SyncEntityType, entityId: String): SyncQueue?
+
+    @Query("SELECT * FROM sync_queue WHERE entity_type = :type AND entity_id = :id AND status = :status LIMIT 1")
+    suspend fun findByStatus(type: SyncEntityType, id: String, status: QueueStatus): SyncQueue?
+
+    @Query("SELECT COUNT(*) FROM sync_queue WHERE entity_type = :type AND entity_id = :id")
+    suspend fun countForEntity(type: SyncEntityType, id: String): Int
 
     @Query("SELECT * FROM sync_queue WHERE (:status IS NULL OR status = :status) ORDER BY created_at ASC")
     fun observeFiltered(status: String?): Flow<List<SyncQueue>>

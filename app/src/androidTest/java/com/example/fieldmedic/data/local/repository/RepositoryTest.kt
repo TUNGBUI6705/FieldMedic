@@ -88,7 +88,7 @@ class RepositoryTest {
             operation = QueueOperation.CREATE,
             changedFieldsJson = """{"name":"A"}""",
             baseValuesJson = "{}",
-            baseVersion = 1,
+            baseVersion = 0,
             priority = 1,
             dependsOn = null
         )
@@ -121,7 +121,7 @@ class RepositoryTest {
             operation = QueueOperation.CREATE,
             changedFieldsJson = """{"name":"B"}""",
             baseValuesJson = "{}",
-            baseVersion = 1,
+            baseVersion = 0,
             priority = 1,
             dependsOn = null
         )
@@ -176,7 +176,7 @@ class RepositoryTest {
             operation = QueueOperation.CREATE,
             changedFieldsJson = "{}",
             baseValuesJson = "{}",
-            baseVersion = 1,
+            baseVersion = 0,
             priority = 1,
             dependsOn = null
         )
@@ -187,7 +187,7 @@ class RepositoryTest {
             operation = QueueOperation.CREATE,
             changedFieldsJson = "{}",
             baseValuesJson = "{}",
-            baseVersion = 1,
+            baseVersion = 0,
             priority = 1,
             dependsOn = null
         )
@@ -210,6 +210,19 @@ class RepositoryTest {
             syncMeta = SyncMeta(createdAt = 1000L, updatedAt = 1000L)
         )
         database.patientDao().upsert(p)
+
+        // Enqueue patient so dependsOn == "p1"
+        syncEnqueuer.enqueue(
+            entityType = SyncEntityType.PATIENT,
+            entityId = "p1",
+            patientId = "p1",
+            operation = QueueOperation.CREATE,
+            changedFieldsJson = "{}",
+            baseValuesJson = "{}",
+            baseVersion = 0,
+            priority = SyncEnqueuer.PATIENT,
+            dependsOn = null
+        )
 
         val enc = Encounter(
             id = "enc1",
@@ -241,8 +254,7 @@ class RepositoryTest {
             vitals = emptyList(),
             medications = emptyList(),
             referral = null,
-            photos = listOf(photo),
-            patientIsStillPending = true
+            photos = listOf(photo)
         )
 
         encounterWriter.saveCompletedEncounter(bundle)
@@ -252,7 +264,7 @@ class RepositoryTest {
         assertEquals(EncounterStatus.COMPLETED, savedEnc?.status)
 
         val queueItems = database.syncDao().observeFiltered("PENDING").first()
-        assertEquals(2, queueItems.size) // Encounter + Photo
+        assertEquals(2, queueItems.count { it.entityType != SyncEntityType.PATIENT }) // Encounter + Photo
         val encQueue = queueItems.find { it.entityType == SyncEntityType.ENCOUNTER }
         assertNotNull(encQueue)
         assertEquals(0, encQueue?.priority) // ALERT_ENCOUNTER priority 0
@@ -292,11 +304,10 @@ class RepositoryTest {
             vitals = emptyList(),
             medications = emptyList(),
             referral = null,
-            photos = emptyList(),
-            patientIsStillPending = true
+            photos = emptyList()
         )
 
-        assertThrows(Exception::class.java) {
+        assertThrows(android.database.sqlite.SQLiteConstraintException::class.java) {
             runBlocking {
                 encounterWriter.saveCompletedEncounter(bundle)
             }

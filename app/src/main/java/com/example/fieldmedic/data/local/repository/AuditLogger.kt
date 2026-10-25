@@ -1,5 +1,6 @@
 package com.example.fieldmedic.data.local.repository
 
+import androidx.room.withTransaction
 import com.example.fieldmedic.data.local.db.AppDatabase
 import com.example.fieldmedic.data.local.entity.AuditAction
 import com.example.fieldmedic.data.local.entity.AuditLog
@@ -31,48 +32,54 @@ class AuditLogger(
         metadata: Map<String, String> = emptyMap()
     ) {
         val db = dbProvider()
-        val dao = db.auditLogDao()
-        val last = dao.lastEntry()
+        db.withTransaction {
+            val dao = db.auditLogDao()
+            val last = dao.lastEntry()
 
-        val seq = (last?.seq ?: 0L) + 1L
-        val prevHash = last?.entryHash ?: "GENESIS"
-        val createdAt = clock()
+            val seq = (last?.seq ?: 0L) + 1L
+            val prevHash = last?.entryHash ?: "GENESIS"
+            val createdAt = clock()
 
-        val rawContent = listOf(
-            prevHash,
-            seq.toString(),
-            actorId,
-            action.name,
-            entityType,
-            entityId ?: "",
-            patientId ?: "",
-            result.name,
-            reason ?: "",
-            createdAt.toString()
-        ).joinToString("\u001F")
+            val metadataJson = Json.encodeToString(metadata)
 
-        val entryHash = sha256Hex(rawContent)
-        val metadataJson = Json.encodeToString(metadata)
+            val rawContent = listOf(
+                prevHash,
+                seq.toString(),
+                actorId,
+                action.name,
+                entityType,
+                entityId ?: "",
+                patientId ?: "",
+                result.name,
+                reason ?: "",
+                createdAt.toString(),
+                metadataJson,
+                deviceId,
+                appVersion
+            ).joinToString("\u001F")
 
-        val auditLog = AuditLog(
-            id = java.util.UUID.randomUUID().toString(),
-            seq = seq,
-            actorId = actorId,
-            action = action,
-            entityType = entityType,
-            entityId = entityId,
-            patientId = patientId,
-            deviceId = deviceId,
-            appVersion = appVersion,
-            result = result,
-            reason = reason,
-            metadataJson = metadataJson,
-            prevHash = prevHash,
-            entryHash = entryHash,
-            createdAt = createdAt
-        )
+            val entryHash = sha256Hex(rawContent)
 
-        dao.insert(auditLog)
+            val auditLog = AuditLog(
+                id = java.util.UUID.randomUUID().toString(),
+                seq = seq,
+                actorId = actorId,
+                action = action,
+                entityType = entityType,
+                entityId = entityId,
+                patientId = patientId,
+                deviceId = deviceId,
+                appVersion = appVersion,
+                result = result,
+                reason = reason,
+                metadataJson = metadataJson,
+                prevHash = prevHash,
+                entryHash = entryHash,
+                createdAt = createdAt
+            )
+
+            dao.insert(auditLog)
+        }
     }
 
     suspend fun verifyChain(): ChainVerifyResult {
@@ -91,7 +98,10 @@ class AuditLogger(
                 log.patientId ?: "",
                 log.result.name,
                 log.reason ?: "",
-                log.createdAt.toString()
+                log.createdAt.toString(),
+                log.metadataJson,
+                log.deviceId,
+                log.appVersion
             ).joinToString("\u001F")
 
             val calculatedHash = sha256Hex(rawContent)
