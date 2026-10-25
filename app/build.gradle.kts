@@ -78,10 +78,19 @@ dependencies {
     // Serialization
     implementation(libs.kotlinx.serialization.json)
 
+    // Firebase
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.firestore)
+    implementation(libs.firebase.auth)
+
+    // WorkManager
+    implementation(libs.androidx.work.runtime.ktx)
+
     // Testing
     testImplementation(libs.junit)
     testImplementation(libs.androidx.test.core.ktx)
     testImplementation(libs.kotlinx.coroutines.test)
+    implementation(libs.kotlinx.coroutines.play.services)
 
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)

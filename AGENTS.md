@@ -63,3 +63,25 @@ Quy ước dữ liệu:
 - Khi test đỏ: nêu nguyên nhân gốc kèm bằng chứng trước, rồi mới sửa.
 - CREATE trong sync_queue luôn có base_version = 0.
 - Đọc cấu hình minSdk/package từ build.gradle.kts, không hard-code trong code.
+
+## UI Rules (Phase 5)
+- Stack: Jetpack Compose + Material 3, Navigation Compose, Hilt (@HiltViewModel), Paging 3.
+- Architecture: Screen (stateless Composable) <- UiState (data class, immutable) <- ViewModel
+  (StateFlow) <- UseCase/Repository. Screens never touch DAO/Entity directly.
+- Each screen has: XxxUiState, XxxUiEvent (sealed interface), XxxViewModel, XxxScreen (stateful
+  wrapper using collectAsStateWithLifecycle) + XxxContent (stateless, previewable).
+- One-off effects (navigation, snackbar) via Channel/SharedFlow, not in UiState.
+- ALL user-visible text goes in res/values/strings.xml (Vietnamese). No hardcoded strings.
+- Domain errors (AppError) are mapped to strings via ErrorMessageMapper only.
+- Status colors come from theme (ExtendedColors: success/warning/critical). Never use color alone;
+  always pair with icon or text.
+- Touch targets >= 48dp. Body text >= 16sp. Use Scaffold + innerPadding; imePadding on forms.
+- Sensitive data (CCCD, ENC1 fields) masked by default. Never log PII. Never keep decrypted data
+  in a singleton; clear on lock.
+- DB is only available after unlock. Any Flow/Pager creation must be gated on DatabaseHolder.isOpen.
+  On DatabaseLocked exception -> navigate to Lock with popUpTo(0).
+- Do not modify files outside the list given in the prompt. If a domain function is missing, add it
+  to the interface + implementation + a unit test and list it in your summary.
+- After each task: run ./gradlew assembleDebug and ./gradlew testDebugUnitTest and report results.
+  Never claim success without running them. Do not add new libraries unless the prompt says so.
+- Every Composable screen content has a @Preview with sample data (light theme).
