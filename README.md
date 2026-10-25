@@ -128,20 +128,8 @@ sequenceDiagram
 
 ---
 
-## 🗺️ Lộ Trình Phát Triển (Roadmap)
-
-- [x] **Giai đoạn 1**: CSDL Room mã hóa 256-bit SQLCipher + KeyStore + Biometric.
-- [x] **Giai đoạn 2**: Động cơ đồng bộ Offline `SyncQueue` & Xử lý xung đột 3-Way Merge.
-- [x] **Giai đoạn 3**: Nghiệp vụ khám bệnh, tính điểm cảnh báo sinh hiệu & kiểm tra tương tác thuốc.
-- [ ] **Giai đoạn 4**: Tích hợp đọc dữ liệu thiết bị y tế BLE (Máy đo huyết áp, nhiệt kế).
-- [ ] **Giai đoạn 5**: Cache bản đồ thôn bản ngoại tuyến MBTiles & nén ảnh triệu chứng WebP.
-- [ ] **Giai đoạn 6**: Trợ lý chẩn đoán AI tại thiết bị (Gemini Nano qua Android ML Kit Prompt API).
 
 ---
 
 ## 📜 Giấy Phép & Đóng Góp
 
-Dự án được xây dựng phục vụ cộng đồng y tế vùng cao. Mọi đóng góp xin vui lòng đọc kỹ [CONTRIBUTING.md](CONTRIBUTING.md) trước khi tạo Pull Request.
-
-- **Đơn vị phát triển**: Đội ngũ Kỹ thuật FieldMedic.
-- **Giấy phép**: Open Source / Community License.
